@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -18,6 +19,25 @@ const searchUpstreamBody = `{
 		"cost": 0.005
 	}
 }`
+
+func TestWebSearchSchemaPinsTheProviderValues(t *testing.T) {
+	deps := noopDeps()
+	deps.NanoGPT = nanoClient(t, "http://127.0.0.1:1")
+
+	properties := toolProperties(t, findTool(t, connectedSession(t, deps), "web_search"))
+
+	if got := properties["provider"].Enum; !slices.Equal(got, searchProviders) {
+		t.Errorf("provider enum = %v, want %v", got, searchProviders)
+	}
+
+	if got := properties["outputType"].Enum; !slices.Equal(got, searchOutputTypes) {
+		t.Errorf("outputType enum = %v, want %v", got, searchOutputTypes)
+	}
+
+	if description := properties["provider"].Description; strings.Contains(description, "valyu") {
+		t.Errorf("provider description = %q, want the names left to the enum", description)
+	}
+}
 
 func TestWebSearchReturnsTheResolvedRequestAndResults(t *testing.T) {
 	deps := noopDeps()

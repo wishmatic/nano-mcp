@@ -107,6 +107,51 @@ func toolNames(t *testing.T, session *mcp.ClientSession) []string {
 	return names
 }
 
+func findTool(t *testing.T, session *mcp.ClientSession, name string) *mcp.Tool {
+	t.Helper()
+
+	result, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListTools() error: %v", err)
+	}
+
+	for _, tool := range result.Tools {
+		if tool.Name == name {
+			return tool
+		}
+	}
+
+	t.Fatalf("tool %q is not listed", name)
+
+	return nil
+}
+
+type schemaProperty struct {
+	Description string   `json:"description"`
+	Enum        []string `json:"enum"`
+}
+
+// toolProperties decodes a tool's input schema the way a client sees it, which arrives as
+// raw JSON rather than the SDK's typed schema.
+func toolProperties(t *testing.T, tool *mcp.Tool) map[string]schemaProperty {
+	t.Helper()
+
+	raw, err := json.Marshal(tool.InputSchema)
+	if err != nil {
+		t.Fatalf("marshal input schema: %v", err)
+	}
+
+	var schema struct {
+		Properties map[string]schemaProperty `json:"properties"`
+	}
+
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		t.Fatalf("decode input schema %s: %v", raw, err)
+	}
+
+	return schema.Properties
+}
+
 func callTool(t *testing.T, session *mcp.ClientSession, name string, args any) *mcp.CallToolResult {
 	t.Helper()
 

@@ -7,11 +7,21 @@ import (
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 )
 
+// The sets nano-gpt documents for /api/web. They ride in the schema as enums, so no
+// description has to list them.
+var (
+	searchProviders = []string{
+		"linkup", "tavily", "exa", "kagi", "perplexity", "valyu", "brave", "sofya", "firecrawl",
+	}
+
+	searchOutputTypes = []string{"searchResults", "sourcedAnswer", "structured"}
+)
+
 type webSearchInput struct {
 	Query      string `json:"query" jsonschema:"what to search for"`
-	Provider   string `json:"provider,omitempty" jsonschema:"tavily, brave, linkup, exa, kagi, perplexity, valyu, sofya, or firecrawl; nano-gpt routes when unset"`
+	Provider   string `json:"provider,omitempty" jsonschema:"nano-gpt routes to linkup when unset"`
 	Depth      string `json:"depth,omitempty" jsonschema:"search depth, standard unless deepened"`
-	OutputType string `json:"outputType,omitempty" jsonschema:"searchResults returns a normalized result array, sourcedAnswer and structured return the provider's own answer object"`
+	OutputType string `json:"outputType,omitempty" jsonschema:"searchResults returns a normalized result array; the other two return the provider's own answer object"`
 }
 
 type webSearchOutput struct {
@@ -26,11 +36,17 @@ type webSearchOutput struct {
 }
 
 func registerWebSearch(srv *mcp.Server, h *handlers) {
-	mcp.AddTool(srv, &mcp.Tool{
+	tool := &mcp.Tool{
 		Name: "web_search",
 		Description: "Search the web through nano-gpt's providers. Costs money per request; the charge is " +
 			"reported in costUsd. Returns citations and page content rather than the pages themselves.",
-	}, h.webSearch)
+		InputSchema: mustEnumInputSchema[webSearchInput](map[string][]string{
+			"provider":   searchProviders,
+			"outputType": searchOutputTypes,
+		}),
+	}
+
+	mcp.AddTool(srv, tool, h.webSearch)
 }
 
 func (h *handlers) webSearch(ctx context.Context, _ *mcp.CallToolRequest, in webSearchInput) (
