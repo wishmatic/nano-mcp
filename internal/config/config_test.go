@@ -39,6 +39,8 @@ func TestLoadReadsTheEnvironment(t *testing.T) {
 	t.Setenv("PORT", "9100")
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("API_KEY", "secret")
+	t.Setenv("NANOGPT_API_KEY", "nano-secret")
+	t.Setenv("NANOGPT_BASE_URL", "https://example.test")
 
 	cfg, err := Load()
 	if err != nil {
@@ -52,6 +54,10 @@ func TestLoadReadsTheEnvironment(t *testing.T) {
 	if cfg.LogLevel != "debug" || cfg.APIKey != "secret" {
 		t.Errorf("Load() = %+v, want the configured level and key", cfg)
 	}
+
+	if cfg.NanoGPTAPIKey != "nano-secret" || cfg.NanoGPTBaseURL != "https://example.test" {
+		t.Errorf("Load() = %+v, want the configured nano-gpt key and base URL", cfg)
+	}
 }
 
 func TestLoadAppliesTheDefaults(t *testing.T) {
@@ -59,6 +65,8 @@ func TestLoadAppliesTheDefaults(t *testing.T) {
 	t.Setenv("PORT", "")
 	t.Setenv("LOG_LEVEL", "")
 	t.Setenv("API_KEY", "")
+	t.Setenv("NANOGPT_API_KEY", "")
+	t.Setenv("NANOGPT_BASE_URL", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -67,6 +75,10 @@ func TestLoadAppliesTheDefaults(t *testing.T) {
 
 	if cfg.Host != "0.0.0.0" || cfg.Port != 8080 || cfg.LogLevel != "info" || cfg.APIKey != "" {
 		t.Errorf("Load() = %+v, want the documented defaults", cfg)
+	}
+
+	if cfg.NanoGPTBaseURL != "" {
+		t.Errorf("NanoGPTBaseURL = %q, want it left empty for the client's default", cfg.NanoGPTBaseURL)
 	}
 }
 

@@ -1,15 +1,12 @@
 package mcp
 
 import (
-	"context"
+	"slices"
 	"testing"
-
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"go.uber.org/zap"
 )
 
 func TestNewBuildsAServer(t *testing.T) {
-	srv, err := New(Deps{Log: zap.NewNop()})
+	srv, err := New(noopDeps())
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
@@ -19,42 +16,34 @@ func TestNewBuildsAServer(t *testing.T) {
 	}
 }
 
-func TestServerOverASession(t *testing.T) {
-	srv, err := New(Deps{Log: zap.NewNop()})
-	if err != nil {
-		t.Fatalf("New() error: %v", err)
-	}
-
-	ctx := context.Background()
-	serverTransport, clientTransport := mcp.NewInMemoryTransports()
-
-	serverSession, err := srv.Connect(ctx, serverTransport, nil)
-	if err != nil {
-		t.Fatalf("server Connect() error: %v", err)
-	}
-
-	t.Cleanup(func() { _ = serverSession.Close() })
-
-	session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, nil).Connect(
-		ctx, clientTransport, nil,
-	)
-	if err != nil {
-		t.Fatalf("client Connect() error: %v", err)
-	}
-
-	t.Cleanup(func() { _ = session.Close() })
+func TestServerInfoNamesThisRepo(t *testing.T) {
+	session := connectedSession(t, noopDeps())
 
 	info := session.InitializeResult().ServerInfo
 	if info.Name != "nano-mcp" || info.Version != version {
 		t.Errorf("server info = %+v, want nano-mcp %s", info, version)
 	}
+}
 
-	tools, err := session.ListTools(ctx, nil)
-	if err != nil {
-		t.Fatalf("ListTools() error: %v", err)
+func TestServerWithoutAClientListsNoTools(t *testing.T) {
+	session := connectedSession(t, noopDeps())
+
+	if names := toolNames(t, session); len(names) != 0 {
+		t.Errorf("tools = %v, want none until a nano-gpt client is configured", names)
 	}
+}
 
-	if len(tools.Tools) != 0 {
-		t.Errorf("tools = %v, want none until one is registered", tools.Tools)
+func TestServerListsTheWebTools(t *testing.T) {
+	deps := noopDeps()
+	deps.NanoGPT = nanoClient(t, "http://127.0.0.1:1")
+
+	session := connectedSession(t, deps)
+
+	want := []string{"web_scrape", "web_search"}
+	names := toolNames(t, session)
+	slices.Sort(names)
+
+	if !slices.Equal(names, want) {
+		t.Errorf("tools = %v, want %v", names, want)
 	}
 }

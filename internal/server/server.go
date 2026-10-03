@@ -14,10 +14,13 @@ import (
 	"github.com/wishmatic/nano-mcp/internal/auth"
 	"github.com/wishmatic/nano-mcp/internal/config"
 	mcpServer "github.com/wishmatic/nano-mcp/internal/mcp"
+	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
 
-const writeTimeout = 60 * time.Second
+// writeTimeout stays above nanogpt.RequestTimeout, so a slow upstream call fails with the
+// upstream error rather than a connection the server aborts mid-response.
+const writeTimeout = 120 * time.Second
 
 type Server struct {
 	cfg    config.Config
@@ -35,7 +38,12 @@ func New(cfg config.Config, log *zap.Logger) (*Server, error) {
 		return nil, err
 	}
 
-	mcpSrv, err := mcpServer.New(mcpServer.Deps{Log: log})
+	nano, err := nanogpt.New(nanogpt.Config{APIKey: cfg.NanoGPTAPIKey, BaseURL: cfg.NanoGPTBaseURL})
+	if err != nil {
+		return nil, err
+	}
+
+	mcpSrv, err := mcpServer.New(mcpServer.Deps{Log: log, NanoGPT: nano})
 	if err != nil {
 		return nil, fmt.Errorf("build mcp server: %w", err)
 	}

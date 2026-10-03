@@ -2,11 +2,13 @@ package mcp
 
 import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
 
 type Deps struct {
-	Log *zap.Logger
+	Log     *zap.Logger
+	NanoGPT *nanogpt.Client
 }
 
 const version = "0.1.0"
@@ -17,11 +19,18 @@ func New(deps Deps) (*mcp.Server, error) {
 		Version: version,
 	}, nil)
 
-	registerTools(srv, &handlers{log: deps.Log})
+	registerTools(srv, &handlers{log: deps.Log, nanogpt: deps.NanoGPT})
 
 	return srv, nil
 }
 
+// A server built without a nano-gpt client lists no tools, which keeps the
+// empty surface reachable in tests and in any future keyless deployment.
 func registerTools(srv *mcp.Server, h *handlers) {
-	// No-op.
+	if h.nanogpt == nil {
+		return
+	}
+
+	registerWebSearch(srv, h)
+	registerWebScrape(srv, h)
 }

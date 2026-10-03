@@ -14,6 +14,9 @@ type Config struct {
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
 	APIKey string `env:"API_KEY"`
+
+	NanoGPTAPIKey  string `env:"NANOGPT_API_KEY"`
+	NanoGPTBaseURL string `env:"NANOGPT_BASE_URL"`
 }
 
 func Load() (Config, error) {

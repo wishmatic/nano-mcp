@@ -10,39 +10,74 @@ import (
 
 	"github.com/wishmatic/nano-mcp/internal/auth"
 	"github.com/wishmatic/nano-mcp/internal/config"
+	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
 
-func TestShutdown(t *testing.T) {
-	srv, err := New(config.Config{Port: 8080, APIKey: "server-key"}, zap.NewNop())
+func testConfig() config.Config {
+	return config.Config{
+		Port:           8080,
+		APIKey:         "server-key",
+		NanoGPTAPIKey:  "nano-key",
+		NanoGPTBaseURL: "http://127.0.0.1:1",
+	}
+}
+
+func newTestServer(t *testing.T) *Server {
+	t.Helper()
+
+	srv, err := New(testConfig(), zap.NewNop())
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
 
-	if err := srv.Shutdown(context.Background()); err != nil {
+	return srv
+}
+
+func TestShutdown(t *testing.T) {
+	if err := newTestServer(t).Shutdown(context.Background()); err != nil {
 		t.Fatalf("Shutdown() error: %v", err)
 	}
 }
 
 func TestNewRequiresAPIKey(t *testing.T) {
-	_, err := New(config.Config{Port: 8080}, zap.NewNop())
+	cfg := testConfig()
+	cfg.APIKey = ""
+
+	_, err := New(cfg, zap.NewNop())
 	if !errors.Is(err, auth.ErrNoAPIKey) {
 		t.Errorf("New() error = %v, want auth.ErrNoAPIKey", err)
 	}
 }
 
+func TestNewRequiresNanoGPTAPIKey(t *testing.T) {
+	cfg := testConfig()
+	cfg.NanoGPTAPIKey = ""
+
+	_, err := New(cfg, zap.NewNop())
+	if !errors.Is(err, nanogpt.ErrNoAPIKey) {
+		t.Errorf("New() error = %v, want nanogpt.ErrNoAPIKey", err)
+	}
+}
+
 func TestNewRejectsAnInvalidPort(t *testing.T) {
-	_, err := New(config.Config{APIKey: "server-key"}, zap.NewNop())
+	cfg := testConfig()
+	cfg.Port = 0
+
+	_, err := New(cfg, zap.NewNop())
 	if err == nil || !strings.Contains(err.Error(), "PORT") {
 		t.Errorf("New() error = %v, want it to name PORT", err)
 	}
 }
 
-func TestHealthz(t *testing.T) {
-	srv, err := New(config.Config{Port: 8080, APIKey: "server-key"}, zap.NewNop())
-	if err != nil {
-		t.Fatalf("New() error: %v", err)
+func TestWriteTimeoutOutlivesTheUpstreamCall(t *testing.T) {
+	if writeTimeout <= nanogpt.RequestTimeout {
+		t.Errorf("writeTimeout = %s, want it above the %s upstream timeout", writeTimeout, nanogpt.RequestTimeout)
 	}
+}
+
+func TestHealthz(t *testing.T) {
+	srv := newTestServer(t)
 
 	rec := httptest.NewRecorder()
 	srv.router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
@@ -57,10 +92,7 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestMCPRejectsBadCredentials(t *testing.T) {
-	srv, err := New(config.Config{Port: 8080, APIKey: "server-key"}, zap.NewNop())
-	if err != nil {
-		t.Fatalf("New() error: %v", err)
-	}
+	srv := newTestServer(t)
 
 	authHeaders := map[string]string{
 		"no header":    "",
@@ -86,10 +118,7 @@ func TestMCPRejectsBadCredentials(t *testing.T) {
 }
 
 func TestMCPAcceptsTheConfiguredToken(t *testing.T) {
-	srv, err := New(config.Config{Port: 8080, APIKey: "server-key"}, zap.NewNop())
-	if err != nil {
-		t.Fatalf("New() error: %v", err)
-	}
+	srv := newTestServer(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader("{}"))
 	req.Header.Set("Authorization", "Bearer server-key")
