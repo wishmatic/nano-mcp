@@ -16,10 +16,9 @@ import (
 
 func testConfig() config.Config {
 	return config.Config{
-		Port:           8080,
-		APIKey:         "server-key",
-		NanoGPTAPIKey:  "nano-key",
-		NanoGPTBaseURL: "http://127.0.0.1:1",
+		Port:          8080,
+		APIKey:        "server-key",
+		NanoGPTAPIKey: "nano-key",
 	}
 }
 

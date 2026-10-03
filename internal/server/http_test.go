@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
 
@@ -45,11 +46,15 @@ func connectedClient(t *testing.T, upstream http.HandlerFunc) *mcp.ClientSession
 	t.Cleanup(upstreamAPI.Close)
 
 	cfg := testConfig()
-	cfg.NanoGPTBaseURL = upstreamAPI.URL
 
-	srv, err := New(cfg, zap.NewNop())
+	nano, err := nanogpt.New(nanogpt.Config{APIKey: cfg.NanoGPTAPIKey, BaseURL: upstreamAPI.URL})
 	if err != nil {
-		t.Fatalf("New() error: %v", err)
+		t.Fatalf("nanogpt.New() error: %v", err)
+	}
+
+	srv, err := newServer(cfg, zap.NewNop(), nano)
+	if err != nil {
+		t.Fatalf("newServer() error: %v", err)
 	}
 
 	api := httptest.NewServer(srv.router)

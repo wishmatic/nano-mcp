@@ -15,8 +15,7 @@ type Config struct {
 
 	APIKey string `env:"API_KEY"`
 
-	NanoGPTAPIKey  string `env:"NANOGPT_API_KEY"`
-	NanoGPTBaseURL string `env:"NANOGPT_BASE_URL"`
+	NanoGPTAPIKey string `env:"NANOGPT_API_KEY"`
 }
 
 func Load() (Config, error) {

@@ -31,16 +31,22 @@ type Server struct {
 }
 
 func New(cfg config.Config, log *zap.Logger) (*Server, error) {
+	nano, err := nanogpt.New(nanogpt.Config{APIKey: cfg.NanoGPTAPIKey})
+	if err != nil {
+		return nil, err
+	}
+
+	return newServer(cfg, log, nano)
+}
+
+// newServer takes the client so tests can point it at a stub; New always builds one aimed at
+// the real endpoint.
+func newServer(cfg config.Config, log *zap.Logger, nano *nanogpt.Client) (*Server, error) {
 	if cfg.APIKey == "" {
 		return nil, auth.ErrNoAPIKey
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	nano, err := nanogpt.New(nanogpt.Config{APIKey: cfg.NanoGPTAPIKey, BaseURL: cfg.NanoGPTBaseURL})
-	if err != nil {
 		return nil, err
 	}
 
