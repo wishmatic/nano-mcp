@@ -16,6 +16,8 @@
 coverage.*
 *.coverprofile
 profile.cov
+coverage.txt
+coverage.html
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -26,7 +28,25 @@ go.work.sum
 
 # env file
 .env
+.env.*
+!.env.example
+
+# Build output
+/bin/
+/dist/
+/build/
+
+# Runtime artifacts
+*.log
+*.prof
+*.db
+*.db-wal
+*.db-shm
 
 # Editor/IDE
 # .idea/
 # .vscode/
+*.swp
+*.swo
+*~
+.DS_Store
