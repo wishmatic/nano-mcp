@@ -31,7 +31,7 @@ func TestGenerateVideoSubmitsTheExposedFields(t *testing.T) {
 		Mode:           "text-to-video",
 		Seed:           &seed,
 		GenerateAudio:  &audio,
-		ImageURL:       "https://images.example.com/start.png",
+		ImageDataURL:   "data:image/png;base64,cG5n",
 		VideoURL:       "https://videos.example.com/source.mp4",
 	})
 	if err != nil {
@@ -59,7 +59,7 @@ func TestGenerateVideoSubmitsTheExposedFields(t *testing.T) {
 		"mode":            "text-to-video",
 		"seed":            float64(7),
 		"generateAudio":   true,
-		"imageUrl":        "https://images.example.com/start.png",
+		"imageDataUrl":    "data:image/png;base64,cG5n",
 		"videoUrl":        "https://videos.example.com/source.mp4",
 	}
 
@@ -81,7 +81,7 @@ func TestGenerateVideoOmitsUnsetFields(t *testing.T) {
 
 	post := calls.submit(t)
 
-	for _, key := range []string{"seed", "duration", "imageUrl", "videoUrl", "negative_prompt"} {
+	for _, key := range []string{"seed", "duration", "imageDataUrl", "videoUrl", "negative_prompt"} {
 		post.assertBodyOmits(t, key)
 	}
 }

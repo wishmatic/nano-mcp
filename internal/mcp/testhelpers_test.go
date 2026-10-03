@@ -13,6 +13,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wishmatic/nano-mcp/internal/filestore"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
+	"github.com/wishmatic/nano-mcp/internal/resolve"
+	"github.com/wishmatic/nano-mcp/internal/sourcemap"
 	"go.uber.org/zap"
 )
 
@@ -62,6 +64,17 @@ func fileStore(t *testing.T) *filestore.Client {
 	client, _ := videoStore(t)
 
 	return client
+}
+
+func addressMap(t *testing.T, spec string) *resolve.Client {
+	t.Helper()
+
+	sources, err := sourcemap.Parse(spec)
+	if err != nil {
+		t.Fatalf("sourcemap.Parse(%q) error: %v", spec, err)
+	}
+
+	return resolve.New(sources)
 }
 
 func upstream(t *testing.T, handler http.HandlerFunc) string {
@@ -122,6 +135,7 @@ func nanoSession(t *testing.T, baseURL string) *mcp.ClientSession {
 	deps := noopDeps()
 	deps.NanoGPT = nanoClient(t, baseURL)
 	deps.Files = fileStore(t)
+	deps.Resolver = addressMap(t, "")
 
 	return connectedSession(t, deps)
 }

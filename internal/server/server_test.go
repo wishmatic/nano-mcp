@@ -96,6 +96,16 @@ func TestNewRequiresPublicHost(t *testing.T) {
 	}
 }
 
+func TestNewRejectsABadImageURLMap(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.ImageURLMap = "https://chat.example.com/images"
+
+	_, err := New(cfg, zap.NewNop())
+	if err == nil || !strings.Contains(err.Error(), "IMAGE_URL_MAP") {
+		t.Errorf("New() error = %v, want it to name IMAGE_URL_MAP", err)
+	}
+}
+
 func TestWriteTimeoutOutlivesTheUpstreamCall(t *testing.T) {
 	if writeTimeout <= nanogpt.MaxCallBudget {
 		t.Errorf("writeTimeout = %s, want it above nanogpt.MaxCallBudget (%s)", writeTimeout, nanogpt.MaxCallBudget)

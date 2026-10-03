@@ -16,6 +16,8 @@ import (
 	"github.com/wishmatic/nano-mcp/internal/filestore"
 	mcpServer "github.com/wishmatic/nano-mcp/internal/mcp"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
+	"github.com/wishmatic/nano-mcp/internal/resolve"
+	"github.com/wishmatic/nano-mcp/internal/sourcemap"
 	"go.uber.org/zap"
 )
 
@@ -65,7 +67,17 @@ func newServer(cfg config.Config, log *zap.Logger, nano *nanogpt.Client) (*Serve
 		return nil, fmt.Errorf("configure file storage: %w", err)
 	}
 
-	mcpSrv, err := mcpServer.New(mcpServer.Deps{Log: log, NanoGPT: nano, Files: files})
+	sources, err := sourcemap.Parse(cfg.ImageURLMap)
+	if err != nil {
+		return nil, fmt.Errorf("IMAGE_URL_MAP: %w", err)
+	}
+
+	mcpSrv, err := mcpServer.New(mcpServer.Deps{
+		Log:      log,
+		NanoGPT:  nano,
+		Files:    files,
+		Resolver: resolve.New(sources),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("build mcp server: %w", err)
 	}

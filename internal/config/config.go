@@ -19,6 +19,10 @@ type Config struct {
 
 	NanoGPTAPIKey string `env:"NANOGPT_API_KEY"`
 
+	// ImageURLMap rewrites addresses a provider cannot read into ones this deployment can, as
+	// comma-separated public=private pairs.
+	ImageURLMap string `env:"IMAGE_URL_MAP"`
+
 	// PublicHost is where generated videos are served from, which is a host of its own when
 	// the server sits behind a proxy or a tunnel.
 	PublicHost string `env:"PUBLIC_HOST"`

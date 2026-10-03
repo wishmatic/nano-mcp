@@ -4,13 +4,15 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wishmatic/nano-mcp/internal/filestore"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
+	"github.com/wishmatic/nano-mcp/internal/resolve"
 	"go.uber.org/zap"
 )
 
 type Deps struct {
-	Log     *zap.Logger
-	NanoGPT *nanogpt.Client
-	Files   *filestore.Client
+	Log      *zap.Logger
+	NanoGPT  *nanogpt.Client
+	Files    *filestore.Client
+	Resolver *resolve.Client
 }
 
 const version = "0.1.0"
@@ -21,7 +23,12 @@ func New(deps Deps) (*mcp.Server, error) {
 		Version: version,
 	}, nil)
 
-	registerTools(srv, &handlers{log: deps.Log, nanogpt: deps.NanoGPT, files: deps.Files})
+	registerTools(srv, &handlers{
+		log:      deps.Log,
+		nanogpt:  deps.NanoGPT,
+		files:    deps.Files,
+		resolver: deps.Resolver,
+	})
 
 	return srv, nil
 }
@@ -40,8 +47,9 @@ func registerTools(srv *mcp.Server, h *handlers) {
 	registerFirecrawlCrawl(srv, h)
 	registerYouTubeTranscribe(srv, h)
 
-	// generate_video is the one tool that needs somewhere to put what it makes.
-	if h.files != nil {
+	// generate_video is the one tool that needs somewhere to put what it makes, and something
+	// that can turn the address it is handed into the bytes it uploads.
+	if h.files != nil && h.resolver != nil {
 		registerGenerateVideo(srv, h)
 	}
 }

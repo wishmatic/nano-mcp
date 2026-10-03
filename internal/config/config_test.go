@@ -87,6 +87,7 @@ func TestLoadReadsTheEnvironment(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("API_KEY", "secret")
 	t.Setenv("NANOGPT_API_KEY", "nano-secret")
+	t.Setenv("IMAGE_URL_MAP", "https://chat.example.com/images/=/data/images")
 	t.Setenv("PUBLIC_HOST", "https://nano.example.com")
 	t.Setenv("FILES_DIR", "/var/lib/nano-mcp")
 
@@ -109,6 +110,10 @@ func TestLoadReadsTheEnvironment(t *testing.T) {
 
 	if cfg.PublicHost != "https://nano.example.com" || cfg.FilesDir != "/var/lib/nano-mcp" {
 		t.Errorf("Load() = %+v, want the configured public host and files directory", cfg)
+	}
+
+	if cfg.ImageURLMap != "https://chat.example.com/images/=/data/images" {
+		t.Errorf("Load() = %+v, want the configured address map", cfg)
 	}
 }
 

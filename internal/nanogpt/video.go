@@ -25,6 +25,9 @@ const (
 	StateCompleted  = "completed"
 	StateFailed     = "failed"
 	StateCancelled  = "cancelled"
+
+	// ModeImageToVideo is what an animated image asks for, and nano-gpt's name for it.
+	ModeImageToVideo = "image-to-video"
 )
 
 // VideoRequest carries the fields this server exposes. nano-gpt takes some sixty, most of them
@@ -43,8 +46,10 @@ type VideoRequest struct {
 	Seed          *int  `json:"seed,omitempty"`
 	GenerateAudio *bool `json:"generateAudio,omitempty"`
 
-	ImageURL string `json:"imageUrl,omitempty"`
-	VideoURL string `json:"videoUrl,omitempty"`
+	// ImageDataURL is the resolved image, base64-encoded inline, because the address it came from
+	// is usually one only this deployment can read.
+	ImageDataURL string `json:"imageDataUrl,omitempty"`
+	VideoURL     string `json:"videoUrl,omitempty"`
 }
 
 type VideoRun struct {

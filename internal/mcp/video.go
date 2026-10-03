@@ -2,17 +2,20 @@ package mcp
 
 import (
 	"context"
+	"encoding/base64"
 	"net/url"
 	"path"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wishmatic/nano-mcp/internal/filestore"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
+	"github.com/wishmatic/nano-mcp/internal/resolve"
 )
 
 type generateVideoInput struct {
 	Model          string `json:"model" jsonschema:"video model to generate with, such as veo2-video or kling_v2_1_std_5s; the names change, so a rejection means the running list is worth checking"`
 	Prompt         string `json:"prompt" jsonschema:"what the video should show"`
+	Image          string `json:"image,omitempty" jsonschema:"an image to animate, given as an http(s) URL, a data URI, raw base64, or a URL this server maps with IMAGE_URL_MAP; the bytes travel with the request, so nano-gpt needs to reach nothing. Naming one switches the call to image-to-video unless mode says otherwise"`
 	NegativePrompt string `json:"negativePrompt,omitempty" jsonschema:"content to suppress; respected by Veo, Wan, Runway, Pixverse, and other models"`
 	Duration       string `json:"duration,omitempty" jsonschema:"length in seconds as a string, such as 5 or 8; what a model accepts varies"`
 	AspectRatio    string `json:"aspectRatio,omitempty" jsonschema:"16:9, 9:16, 1:1, 4:3, or 3:4 where the model supports it"`
@@ -20,8 +23,7 @@ type generateVideoInput struct {
 	Mode           string `json:"mode,omitempty" jsonschema:"operation mode: text-to-video, image-to-video, reference-to-video, or video-edit"`
 	Seed           *int   `json:"seed,omitempty" jsonschema:"seed, on the providers that honour one; it may improve reproducibility without guaranteeing it"`
 	GenerateAudio  *bool  `json:"generateAudio,omitempty" jsonschema:"adds AI audio on Veo 3 and Lightricks models"`
-	ImageURL       string `json:"imageUrl,omitempty" jsonschema:"public HTTPS image to animate, for image-to-video models"`
-	VideoURL       string `json:"videoUrl,omitempty" jsonschema:"public HTTPS source video to extend, edit, or upscale, for the models that take one"`
+	VideoURL       string `json:"videoUrl,omitempty" jsonschema:"public HTTPS source video to extend, edit, or upscale, for the models that take one; passed on as given"`
 }
 
 type generateVideoOutput struct {
@@ -47,7 +49,7 @@ func registerGenerateVideo(srv *mcp.Server, h *handlers) {
 func (h *handlers) generateVideo(ctx context.Context, _ *mcp.CallToolRequest, in generateVideoInput) (
 	*mcp.CallToolResult, generateVideoOutput, error,
 ) {
-	video, err := h.nanogpt.GenerateVideo(ctx, nanogpt.VideoRequest{
+	req := nanogpt.VideoRequest{
 		Model:          in.Model,
 		Prompt:         in.Prompt,
 		NegativePrompt: in.NegativePrompt,
@@ -57,9 +59,23 @@ func (h *handlers) generateVideo(ctx context.Context, _ *mcp.CallToolRequest, in
 		Mode:           in.Mode,
 		Seed:           in.Seed,
 		GenerateAudio:  in.GenerateAudio,
-		ImageURL:       in.ImageURL,
 		VideoURL:       in.VideoURL,
-	})
+	}
+
+	if in.Image != "" {
+		image, err := h.resolver.Resolve(ctx, in.Image)
+		if err != nil {
+			return nil, generateVideoOutput{}, h.fail("generate_video", err)
+		}
+
+		req.ImageDataURL = imageDataURL(image)
+
+		if req.Mode == "" {
+			req.Mode = nanogpt.ModeImageToVideo
+		}
+	}
+
+	video, err := h.nanogpt.GenerateVideo(ctx, req)
 	if err != nil {
 		return nil, generateVideoOutput{}, h.fail("generate_video", err)
 	}
@@ -70,6 +86,11 @@ func (h *handlers) generateVideo(ctx context.Context, _ *mcp.CallToolRequest, in
 	}
 
 	return videoLink(video, stored), newGenerateVideoOutput(video, stored), nil
+}
+
+// imageDataURL is nano-gpt's inline form for an image it cannot fetch itself.
+func imageDataURL(image resolve.Image) string {
+	return "data:" + image.MediaType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)
 }
 
 // videoLink is the whole presentation of a generated video: MCP has no video content block, so

@@ -14,7 +14,8 @@ client can search the web, read pages, and generate videos on nano-gpt's billing
   about a cent each.
 - `generate_video` (`POST /api/generate-video`): generates a video and waits it out, then serves
   a copy from this server as a resource link. MCP has no video content block, so the tool returns
-  a link rather than media, and the server needs `PUBLIC_HOST` to build it.
+  a link rather than media, and the server needs `PUBLIC_HOST` to build it. Passing `image`
+  animates that image; the address is read here and the bytes travel with the request.
 
 The three firecrawl tools share one endpoint and differ by the `operation` they send.
 `firecrawl_scrape` is worth having next to `web_scrape` because it is billed in Firecrawl credits
@@ -41,6 +42,23 @@ docker run -d -p 8080:8080 -v nano-mcp-files:/data \
 `API_KEY` authenticates every `/mcp` request, `NANOGPT_API_KEY` funds every tool call, and
 `PUBLIC_HOST` is where videos are served from; all three are required. A stored video is
 readable by anyone who has its URL. See [.env.example](.env.example) for the rest.
+
+### Input addresses
+
+`generate_video` takes an image as an address: an http(s) URL, a data URI, raw base64, or a URL
+this deployment maps to a local file. The resolver reads it and sends the bytes to nano-gpt, so
+the address itself only has to be reachable by this server. `IMAGE_URL_MAP` is how an image on
+disk, or on a sibling `elfu-mcp` or `neo-mcp` whose host nano-gpt cannot reach, becomes
+readable: comma-separated `public=private` pairs, where the private side is a directory or a
+private base URL.
+
+```sh
+# elfu-mcp's images, read from its files directory rather than over the network
+IMAGE_URL_MAP=https://elfu.example.com=/data/elfu/files
+```
+
+A mapped directory is readable in full by anyone who can call the tool, so make the public side
+unguessable.
 
 ## License
 
