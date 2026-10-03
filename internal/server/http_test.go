@@ -76,7 +76,7 @@ func connectedClient(t *testing.T, upstream http.HandlerFunc) *mcp.ClientSession
 	return session
 }
 
-func TestMCPOverHTTPListsTheWebTools(t *testing.T) {
+func TestMCPOverHTTPListsTheTools(t *testing.T) {
 	session := connectedClient(t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("the upstream was called for a listing: %s", r.URL.Path)
 	})
@@ -93,7 +93,8 @@ func TestMCPOverHTTPListsTheWebTools(t *testing.T) {
 
 	slices.Sort(names)
 
-	if want := []string{"web_scrape", "web_search"}; !slices.Equal(names, want) {
+	want := []string{"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search"}
+	if !slices.Equal(names, want) {
 		t.Errorf("tools = %v, want %v", names, want)
 	}
 }

@@ -33,13 +33,13 @@ func TestServerWithoutAClientListsNoTools(t *testing.T) {
 	}
 }
 
-func TestServerListsTheWebTools(t *testing.T) {
+func TestServerListsTheTools(t *testing.T) {
 	deps := noopDeps()
 	deps.NanoGPT = nanoClient(t, "http://127.0.0.1:1")
 
 	session := connectedSession(t, deps)
 
-	want := []string{"web_scrape", "web_search"}
+	want := []string{"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search"}
 	names := toolNames(t, session)
 	slices.Sort(names)
 

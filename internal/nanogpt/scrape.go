@@ -48,7 +48,7 @@ func (c *Client) Scrape(ctx context.Context, req ScrapeRequest) (*ScrapeResponse
 	var out ScrapeResponse
 
 	cred := credential{header: "Authorization", value: "Bearer " + c.apiKey}
-	if err := c.post(ctx, scrapePath, cred, req, &out); err != nil {
+	if err := c.post(ctx, scrapePath, FastTimeout, cred, req, &out); err != nil {
 		return nil, err
 	}
 

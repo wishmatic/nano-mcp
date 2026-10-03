@@ -71,8 +71,8 @@ func TestNewRejectsAnInvalidPort(t *testing.T) {
 }
 
 func TestWriteTimeoutOutlivesTheUpstreamCall(t *testing.T) {
-	if writeTimeout <= nanogpt.RequestTimeout {
-		t.Errorf("writeTimeout = %s, want it above the %s upstream timeout", writeTimeout, nanogpt.RequestTimeout)
+	if writeTimeout <= nanogpt.MaxCallBudget {
+		t.Errorf("writeTimeout = %s, want it above nanogpt.MaxCallBudget (%s)", writeTimeout, nanogpt.MaxCallBudget)
 	}
 }
 

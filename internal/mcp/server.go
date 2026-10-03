@@ -33,4 +33,7 @@ func registerTools(srv *mcp.Server, h *handlers) {
 
 	registerWebSearch(srv, h)
 	registerWebScrape(srv, h)
+	registerFirecrawlScrape(srv, h)
+	registerFirecrawlMap(srv, h)
+	registerFirecrawlCrawl(srv, h)
 }

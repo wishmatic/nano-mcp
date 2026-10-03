@@ -142,6 +142,19 @@ func (r *recordedRequest) assertBody(t *testing.T, key string, want any) {
 	}
 }
 
+func (r *recordedRequest) assertBodyNumber(t *testing.T, key string, want float64) {
+	t.Helper()
+
+	got, ok := r.body[key]
+	if !ok {
+		t.Fatalf("body has no %q: %v", key, r.body)
+	}
+
+	if number, ok := got.(float64); !ok || number != want {
+		t.Errorf("body[%q] = %v, want %v", key, got, want)
+	}
+}
+
 func (r *recordedRequest) assertBodyOmits(t *testing.T, key string) {
 	t.Helper()
 

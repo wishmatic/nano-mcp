@@ -46,7 +46,7 @@ func (c *Client) Search(ctx context.Context, req SearchRequest) (*SearchResponse
 	var out SearchResponse
 
 	cred := credential{header: "x-api-key", value: c.apiKey}
-	if err := c.post(ctx, searchPath, cred, req, &out); err != nil {
+	if err := c.post(ctx, searchPath, FastTimeout, cred, req, &out); err != nil {
 		return nil, err
 	}
 

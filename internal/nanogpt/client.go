@@ -17,9 +17,9 @@ var ErrNoAPIKey = errors.New("NANOGPT_API_KEY is required")
 const (
 	DefaultBaseURL = "https://nano-gpt.com"
 
-	// RequestTimeout stays under internal/server's write timeout, so a slow call returns an
-	// error to the caller instead of a response the server cuts off mid-flight.
-	RequestTimeout = 90 * time.Second
+	// FastTimeout bounds the endpoints that answer in one round trip. A call that asks
+	// nano-gpt to wait for a crawl passes its own budget instead.
+	FastTimeout = 90 * time.Second
 
 	errorBodyLimit = 512
 )
@@ -48,7 +48,7 @@ func New(cfg Config) (*Client, error) {
 	return &Client{
 		apiKey:  cfg.APIKey,
 		baseURL: baseURL,
-		http:    &http.Client{Timeout: RequestTimeout},
+		http:    &http.Client{},
 	}, nil
 }
 
@@ -59,7 +59,10 @@ type credential struct {
 	value  string
 }
 
-func (c *Client) post(ctx context.Context, path string, cred credential, payload, out any) error {
+func (c *Client) post(ctx context.Context, path string, budget time.Duration, cred credential, payload, out any) error {
+	ctx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("encode %s request: %w", path, err)

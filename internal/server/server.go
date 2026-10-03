@@ -18,9 +18,10 @@ import (
 	"go.uber.org/zap"
 )
 
-// writeTimeout stays above nanogpt.RequestTimeout, so a slow upstream call fails with the
-// upstream error rather than a connection the server aborts mid-response.
-const writeTimeout = 120 * time.Second
+// writeTimeout clears nanogpt.MaxCallBudget, so the longest call the client will make, a
+// crawl waiting on nano-gpt, fails with the upstream error rather than a connection the
+// server aborts mid-response.
+const writeTimeout = 6 * time.Minute
 
 type Server struct {
 	cfg    config.Config
