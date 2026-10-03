@@ -33,7 +33,7 @@ func TestServerWithoutAClientListsNoTools(t *testing.T) {
 	}
 }
 
-func TestServerListsTheTools(t *testing.T) {
+func TestServerWithoutFileStorageListsTheOtherTools(t *testing.T) {
 	deps := noopDeps()
 	deps.NanoGPT = nanoClient(t, "http://127.0.0.1:1")
 
@@ -41,6 +41,21 @@ func TestServerListsTheTools(t *testing.T) {
 
 	want := []string{
 		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search", "youtube_transcribe",
+	}
+	names := toolNames(t, session)
+	slices.Sort(names)
+
+	if !slices.Equal(names, want) {
+		t.Errorf("tools = %v, want %v", names, want)
+	}
+}
+
+func TestServerListsTheTools(t *testing.T) {
+	session := nanoSession(t, "http://127.0.0.1:1")
+
+	want := []string{
+		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "generate_video",
+		"web_scrape", "web_search", "youtube_transcribe",
 	}
 	names := toolNames(t, session)
 	slices.Sort(names)

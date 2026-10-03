@@ -45,7 +45,7 @@ func connectedClient(t *testing.T, upstream http.HandlerFunc) *mcp.ClientSession
 	upstreamAPI := httptest.NewServer(upstream)
 	t.Cleanup(upstreamAPI.Close)
 
-	cfg := testConfig()
+	cfg := testConfig(t)
 
 	nano, err := nanogpt.New(nanogpt.Config{APIKey: cfg.NanoGPTAPIKey, BaseURL: upstreamAPI.URL})
 	if err != nil {
@@ -99,7 +99,8 @@ func TestMCPOverHTTPListsTheTools(t *testing.T) {
 	slices.Sort(names)
 
 	want := []string{
-		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search", "youtube_transcribe",
+		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "generate_video",
+		"web_scrape", "web_search", "youtube_transcribe",
 	}
 
 	if !slices.Equal(names, want) {

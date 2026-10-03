@@ -5,27 +5,35 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/wishmatic/nano-mcp/internal/auth"
 	"github.com/wishmatic/nano-mcp/internal/config"
+	"github.com/wishmatic/nano-mcp/internal/filestore"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
 
-func testConfig() config.Config {
+const testPublicHost = "https://nano.example.com"
+
+func testConfig(t *testing.T) config.Config {
+	t.Helper()
+
 	return config.Config{
 		Port:          8080,
 		APIKey:        "server-key",
 		NanoGPTAPIKey: "nano-key",
+		PublicHost:    testPublicHost,
+		FilesDir:      filepath.Join(t.TempDir(), "files"),
 	}
 }
 
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 
-	srv, err := New(testConfig(), zap.NewNop())
+	srv, err := New(testConfig(t), zap.NewNop())
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
@@ -40,7 +48,7 @@ func TestShutdown(t *testing.T) {
 }
 
 func TestNewRequiresAPIKey(t *testing.T) {
-	cfg := testConfig()
+	cfg := testConfig(t)
 	cfg.APIKey = ""
 
 	_, err := New(cfg, zap.NewNop())
@@ -50,7 +58,7 @@ func TestNewRequiresAPIKey(t *testing.T) {
 }
 
 func TestNewRequiresNanoGPTAPIKey(t *testing.T) {
-	cfg := testConfig()
+	cfg := testConfig(t)
 	cfg.NanoGPTAPIKey = ""
 
 	_, err := New(cfg, zap.NewNop())
@@ -60,7 +68,7 @@ func TestNewRequiresNanoGPTAPIKey(t *testing.T) {
 }
 
 func TestNewRejectsAnInvalidPort(t *testing.T) {
-	cfg := testConfig()
+	cfg := testConfig(t)
 	cfg.Port = 0
 
 	_, err := New(cfg, zap.NewNop())
@@ -69,9 +77,32 @@ func TestNewRejectsAnInvalidPort(t *testing.T) {
 	}
 }
 
+func TestNewRequiresPublicHost(t *testing.T) {
+	for name, publicHost := range map[string]string{
+		"unset":       "",
+		"no host":     "https://",
+		"no scheme":   "nano.example.com",
+		"with a path": "https://nano.example.com/files",
+	} {
+		t.Run(name, func(t *testing.T) {
+			cfg := testConfig(t)
+			cfg.PublicHost = publicHost
+
+			_, err := New(cfg, zap.NewNop())
+			if err == nil || !strings.Contains(err.Error(), "PUBLIC_HOST") {
+				t.Errorf("New() error = %v, want it to name PUBLIC_HOST", err)
+			}
+		})
+	}
+}
+
 func TestWriteTimeoutOutlivesTheUpstreamCall(t *testing.T) {
 	if writeTimeout <= nanogpt.MaxCallBudget {
 		t.Errorf("writeTimeout = %s, want it above nanogpt.MaxCallBudget (%s)", writeTimeout, nanogpt.MaxCallBudget)
+	}
+
+	if longest := nanogpt.VideoWaitBudget + filestore.MaxFetchDuration; writeTimeout <= longest {
+		t.Errorf("writeTimeout = %s, want it above a video call's %s", writeTimeout, longest)
 	}
 }
 

@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"github.com/wishmatic/nano-mcp/internal/filestore"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
@@ -8,6 +9,7 @@ import (
 type handlers struct {
 	log     *zap.Logger
 	nanogpt *nanogpt.Client
+	files   *filestore.Client
 }
 
 func (h *handlers) fail(tool string, err error) error {

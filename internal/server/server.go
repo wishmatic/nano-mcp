@@ -13,15 +13,16 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wishmatic/nano-mcp/internal/auth"
 	"github.com/wishmatic/nano-mcp/internal/config"
+	"github.com/wishmatic/nano-mcp/internal/filestore"
 	mcpServer "github.com/wishmatic/nano-mcp/internal/mcp"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
 
-// writeTimeout clears nanogpt.MaxCallBudget, so the longest call the client will make, a
-// crawl waiting on nano-gpt, fails with the upstream error rather than a connection the
-// server aborts mid-response.
-const writeTimeout = 6 * time.Minute
+// writeTimeout clears the longest call the client will make, so that call fails with the
+// upstream error rather than a connection the server aborts mid-response. The longest is
+// generate_video: waiting out a generation, then copying the result to disk.
+const writeTimeout = nanogpt.VideoWaitBudget + filestore.MaxFetchDuration + time.Minute
 
 type Server struct {
 	cfg    config.Config
@@ -50,7 +51,21 @@ func newServer(cfg config.Config, log *zap.Logger, nano *nanogpt.Client) (*Serve
 		return nil, err
 	}
 
-	mcpSrv, err := mcpServer.New(mcpServer.Deps{Log: log, NanoGPT: nano})
+	publicBase, err := cfg.PublicBase()
+	if err != nil {
+		return nil, err
+	}
+
+	if publicBase == nil {
+		return nil, fmt.Errorf("PUBLIC_HOST is required, so that videos have a URL")
+	}
+
+	files, err := filestore.New(filestore.Config{Dir: cfg.FilesDir, PublicBase: publicBase}, log)
+	if err != nil {
+		return nil, fmt.Errorf("configure file storage: %w", err)
+	}
+
+	mcpSrv, err := mcpServer.New(mcpServer.Deps{Log: log, NanoGPT: nano, Files: files})
 	if err != nil {
 		return nil, fmt.Errorf("build mcp server: %w", err)
 	}
@@ -72,6 +87,14 @@ func newServer(cfg config.Config, log *zap.Logger, nano *nanogpt.Client) (*Serve
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return mcpSrv
 	}, nil)
+
+	files.Register(router)
+
+	log.Info("video hosting enabled",
+		zap.String("dir", cfg.FilesDir),
+		zap.String("public_host", cfg.PublicHost),
+	)
+	log.Warn("stored videos are readable by anyone with the URL")
 
 	router.Mount("/mcp", auth.Middleware(log, cfg.APIKey)(handler))
 

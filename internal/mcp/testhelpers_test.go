@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/wishmatic/nano-mcp/internal/filestore"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 	"go.uber.org/zap"
 )
@@ -28,6 +31,37 @@ func nanoClient(t *testing.T, baseURL string) *nanogpt.Client {
 	}
 
 	return c
+}
+
+const testPublicHost = "https://nano.example.com"
+
+// videoStore keeps assets in a directory that goes away with the test, and serves them from a
+// host the test can compare against rather than one that would need to resolve. It returns the
+// directory too, so a test can check what actually landed on disk.
+func videoStore(t *testing.T) (*filestore.Client, string) {
+	t.Helper()
+
+	base, err := url.Parse(testPublicHost)
+	if err != nil {
+		t.Fatalf("url.Parse() error: %v", err)
+	}
+
+	dir := filepath.Join(t.TempDir(), "files")
+
+	client, err := filestore.New(filestore.Config{Dir: dir, PublicBase: base}, zap.NewNop())
+	if err != nil {
+		t.Fatalf("filestore.New() error: %v", err)
+	}
+
+	return client, dir
+}
+
+func fileStore(t *testing.T) *filestore.Client {
+	t.Helper()
+
+	client, _ := videoStore(t)
+
+	return client
 }
 
 func upstream(t *testing.T, handler http.HandlerFunc) string {
@@ -87,6 +121,7 @@ func nanoSession(t *testing.T, baseURL string) *mcp.ClientSession {
 
 	deps := noopDeps()
 	deps.NanoGPT = nanoClient(t, baseURL)
+	deps.Files = fileStore(t)
 
 	return connectedSession(t, deps)
 }

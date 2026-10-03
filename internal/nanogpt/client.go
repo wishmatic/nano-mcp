@@ -33,6 +33,11 @@ type Client struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
+
+	// The poll loop's cadence and ceiling are fields so tests can drive them without waiting
+	// out a real generation.
+	videoPollInterval time.Duration
+	videoWaitBudget   time.Duration
 }
 
 func New(cfg Config) (*Client, error) {
@@ -46,9 +51,11 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		apiKey:  cfg.APIKey,
-		baseURL: baseURL,
-		http:    &http.Client{},
+		apiKey:            cfg.APIKey,
+		baseURL:           baseURL,
+		http:              &http.Client{},
+		videoPollInterval: VideoPollInterval,
+		videoWaitBudget:   VideoWaitBudget,
 	}, nil
 }
 
@@ -60,15 +67,31 @@ type credential struct {
 }
 
 func (c *Client) post(ctx context.Context, path string, budget time.Duration, cred credential, payload, out any) error {
+	return c.do(ctx, http.MethodPost, path, budget, cred, payload, out)
+}
+
+func (c *Client) get(ctx context.Context, path string, budget time.Duration, cred credential, out any) error {
+	return c.do(ctx, http.MethodGet, path, budget, cred, nil, out)
+}
+
+func (c *Client) do(
+	ctx context.Context, method, path string, budget time.Duration, cred credential, payload, out any,
+) error {
 	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("encode %s request: %w", path, err)
+	var body io.Reader
+
+	if payload != nil {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("encode %s request: %w", path, err)
+		}
+
+		body = bytes.NewReader(encoded)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
 	if err != nil {
 		return fmt.Errorf("build %s request: %w", path, err)
 	}
