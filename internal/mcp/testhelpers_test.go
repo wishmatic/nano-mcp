@@ -82,6 +82,15 @@ func connectedSession(t *testing.T, deps Deps) *mcp.ClientSession {
 	return session
 }
 
+func nanoSession(t *testing.T, baseURL string) *mcp.ClientSession {
+	t.Helper()
+
+	deps := noopDeps()
+	deps.NanoGPT = nanoClient(t, baseURL)
+
+	return connectedSession(t, deps)
+}
+
 func toolNames(t *testing.T, session *mcp.ClientSession) []string {
 	t.Helper()
 

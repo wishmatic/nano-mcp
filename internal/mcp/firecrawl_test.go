@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wishmatic/nano-mcp/internal/nanogpt"
 )
 
@@ -30,15 +29,6 @@ func firecrawlUpstream(t *testing.T, body string) (string, *nanogpt.FirecrawlReq
 	return baseURL, &got
 }
 
-func firecrawlSession(t *testing.T, baseURL string) *mcp.ClientSession {
-	t.Helper()
-
-	deps := noopDeps()
-	deps.NanoGPT = nanoClient(t, baseURL)
-
-	return connectedSession(t, deps)
-}
-
 func TestFirecrawlScrapeSendsTheOperationAndReturnsThePayload(t *testing.T) {
 	baseURL, got := firecrawlUpstream(t, firecrawlUpstreamBody)
 
@@ -50,7 +40,7 @@ func TestFirecrawlScrapeSendsTheOperationAndReturnsThePayload(t *testing.T) {
 		"onlyCleanContent": false,
 	}
 
-	result := callTool(t, firecrawlSession(t, baseURL), "firecrawl_scrape", args)
+	result := callTool(t, nanoSession(t, baseURL), "firecrawl_scrape", args)
 	if result.IsError {
 		t.Fatalf("firecrawl_scrape failed: %s", errorText(result))
 	}
@@ -89,7 +79,7 @@ func TestFirecrawlMapSendsTheOperationAndLeavesScrapeFieldsOut(t *testing.T) {
 
 	args := map[string]any{"url": "https://docs.firecrawl.dev", "sitemap": "include", "limit": 10}
 
-	result := callTool(t, firecrawlSession(t, baseURL), "firecrawl_map", args)
+	result := callTool(t, nanoSession(t, baseURL), "firecrawl_map", args)
 	if result.IsError {
 		t.Fatalf("firecrawl_map failed: %s", errorText(result))
 	}
@@ -115,7 +105,7 @@ func TestFirecrawlCrawlSendsTheOperationAndDefaultsTheWait(t *testing.T) {
 		"limit":             10,
 	}
 
-	result := callTool(t, firecrawlSession(t, baseURL), "firecrawl_crawl", args)
+	result := callTool(t, nanoSession(t, baseURL), "firecrawl_crawl", args)
 	if result.IsError {
 		t.Fatalf("firecrawl_crawl failed: %s", errorText(result))
 	}
@@ -146,7 +136,7 @@ func TestFirecrawlCrawlSendsTheRequestedWait(t *testing.T) {
 
 	args := map[string]any{"url": "https://docs.firecrawl.dev", "waitForFinishSecs": 300, "maxReturnedPages": 5}
 
-	result := callTool(t, firecrawlSession(t, baseURL), "firecrawl_crawl", args)
+	result := callTool(t, nanoSession(t, baseURL), "firecrawl_crawl", args)
 	if result.IsError {
 		t.Fatalf("firecrawl_crawl failed: %s", errorText(result))
 	}
@@ -165,7 +155,7 @@ func TestFirecrawlCrawlRejectsAWaitBeyondTheCap(t *testing.T) {
 
 	args := map[string]any{"url": "https://docs.firecrawl.dev", "waitForFinishSecs": 301}
 
-	result := callTool(t, firecrawlSession(t, baseURL), "firecrawl_crawl", args)
+	result := callTool(t, nanoSession(t, baseURL), "firecrawl_crawl", args)
 	if !result.IsError {
 		t.Fatal("IsError = false, want a wait beyond the cap rejected")
 	}
@@ -187,7 +177,7 @@ func TestFirecrawlReportsUpstreamFailures(t *testing.T) {
 
 	args := map[string]any{"url": "https://docs.firecrawl.dev"}
 
-	result := callTool(t, firecrawlSession(t, baseURL), "firecrawl_scrape", args)
+	result := callTool(t, nanoSession(t, baseURL), "firecrawl_scrape", args)
 	if !result.IsError {
 		t.Fatalf("IsError = false, want an upstream 500 to fail the call: %s", errorText(result))
 	}

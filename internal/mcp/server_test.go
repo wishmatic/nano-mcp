@@ -39,7 +39,9 @@ func TestServerListsTheTools(t *testing.T) {
 
 	session := connectedSession(t, deps)
 
-	want := []string{"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search"}
+	want := []string{
+		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search", "youtube_transcribe",
+	}
 	names := toolNames(t, session)
 	slices.Sort(names)
 

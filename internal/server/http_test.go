@@ -93,7 +93,10 @@ func TestMCPOverHTTPListsTheTools(t *testing.T) {
 
 	slices.Sort(names)
 
-	want := []string{"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search"}
+	want := []string{
+		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search", "youtube_transcribe",
+	}
+
 	if !slices.Equal(names, want) {
 		t.Errorf("tools = %v, want %v", names, want)
 	}

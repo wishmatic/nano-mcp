@@ -36,4 +36,5 @@ func registerTools(srv *mcp.Server, h *handlers) {
 	registerFirecrawlScrape(srv, h)
 	registerFirecrawlMap(srv, h)
 	registerFirecrawlCrawl(srv, h)
+	registerYouTubeTranscribe(srv, h)
 }
