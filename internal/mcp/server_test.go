@@ -40,7 +40,8 @@ func TestServerWithoutFileStorageListsTheOtherTools(t *testing.T) {
 	session := connectedSession(t, deps)
 
 	want := []string{
-		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "web_scrape", "web_search", "youtube_transcribe",
+		"check_balance", "firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "list_models", "web_scrape",
+		"web_search", "youtube_transcribe",
 	}
 	names := toolNames(t, session)
 	slices.Sort(names)
@@ -54,8 +55,8 @@ func TestServerListsTheTools(t *testing.T) {
 	session := nanoSession(t, "http://127.0.0.1:1")
 
 	want := []string{
-		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "generate_image", "generate_video",
-		"web_scrape", "web_search", "youtube_transcribe",
+		"check_balance", "firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "generate_image",
+		"generate_video", "list_models", "web_scrape", "web_search", "youtube_transcribe",
 	}
 	names := toolNames(t, session)
 	slices.Sort(names)

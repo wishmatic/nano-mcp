@@ -12,6 +12,8 @@ client can search the web, read pages, and generate images and videos on nano-gp
 - `firecrawl_crawl` (`POST /api/v1/firecrawl`): crawls from a starting URL and returns the pages.
 - `youtube_transcribe` (`POST /api/youtube-transcribe`): transcribes up to 10 YouTube videos, at
   about a cent each.
+- `list_models` (`GET /api/v1/image-models`, `GET /api/v1/video-models`): lists the image or video
+  models nano-gpt currently serves, with their capabilities, supported settings, and pricing. Free.
 - `generate_image` (`POST /api/v1/images/generations`, OpenAI-compatible): generates one or more
   images and attaches each to the result, with the URL this server serves its copy from. Passing
   `image` transforms that image instead of generating from scratch, and `mask` confines the change
@@ -20,12 +22,15 @@ client can search the web, read pages, and generate images and videos on nano-gp
   a copy from this server as a resource link. MCP has no video content block, so the tool returns
   a link rather than media, and the server needs `PUBLIC_HOST` to build it. Passing `image`
   animates that image; the address is read here and the bytes travel with the request.
+- `check_balance` (`POST /api/check-balance`): reads the credit the account has left. Free.
 
 The three firecrawl tools share one endpoint and differ by the `operation` they send.
 `firecrawl_scrape` is worth having next to `web_scrape` because it is billed in Firecrawl credits
 rather than per URL, and because it exposes a proxy tier and content filters `web_scrape` lacks.
 `youtube_transcribe` bills only the videos that yield a transcript, so one without captions costs
-nothing and comes back as a failed entry.
+nothing and comes back as a failed entry. `list_models` is how to find an id for the generate tools,
+which is worth doing because the names, availability, and settings all change, and `check_balance`
+is worth a call before a generation that bills by the second.
 
 ## Local Development
 

@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -94,6 +96,7 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 type recordedRequest struct {
 	method  string
 	path    string
+	query   url.Values
 	headers http.Header
 	body    map[string]any
 }
@@ -105,9 +108,11 @@ func recordingServer(t *testing.T, response string, status int) (*httptest.Serve
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.method = r.Method
 		rec.path = r.URL.Path
+		rec.query = r.URL.Query()
 		rec.headers = r.Header.Clone()
 
-		if err := json.NewDecoder(r.Body).Decode(&rec.body); err != nil {
+		// A request that carries no body, as the GET endpoints send, is not a failure to decode.
+		if err := json.NewDecoder(r.Body).Decode(&rec.body); err != nil && !errors.Is(err, io.EOF) {
 			t.Errorf("decode request body: %v", err)
 		}
 
