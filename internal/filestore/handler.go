@@ -9,12 +9,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// The types this server keeps and serves. Anything else is refused rather than written, so a
+// mislabelled download cannot become a file with a type nothing declares.
 const defaultMediaType = "video/mp4"
 
 var mediaTypes = map[string]string{
 	"video/mp4":       "mp4",
 	"video/webm":      "webm",
 	"video/quicktime": "mov",
+
+	"image/png":  "png",
+	"image/jpeg": "jpg",
+	"image/webp": "webp",
 }
 
 func (c *Client) Register(r chi.Router) {
@@ -80,14 +86,36 @@ func extensionFor(mediaType string) (string, bool) {
 	return ext, ok
 }
 
-// mediaTypeOf trusts a provider's content type only when it names a format we serve, because
-// the same assets arrive labelled application/octet-stream or with no type at all.
-func mediaTypeOf(header string) string {
+// DetectMediaType names the type of an asset from its own bytes, for a source that labelled them as
+// nothing in particular or, when an image arrives inline, not at all. Only the types it serves are
+// reported, which is what makes a false a refusal rather than a missed guess.
+func DetectMediaType(data []byte) (string, bool) {
+	base, _, _ := strings.Cut(http.DetectContentType(data), ";")
+
+	return servedMediaType(base)
+}
+
+// mediaTypeOf trusts a provider's content type when it names a format we serve, reads the bytes when
+// it does not, and falls back to video/mp4 for a download that is neither labelled nor recognisable,
+// which a video off a mislabelling provider usually is.
+func mediaTypeOf(header string, data []byte) string {
 	base, _, _ := strings.Cut(header, ";")
 
-	if _, ok := mediaTypes[strings.ToLower(strings.TrimSpace(base))]; ok {
-		return strings.ToLower(strings.TrimSpace(base))
+	if mediaType, ok := servedMediaType(base); ok {
+		return mediaType
+	}
+
+	if mediaType, ok := DetectMediaType(data); ok {
+		return mediaType
 	}
 
 	return defaultMediaType
+}
+
+func servedMediaType(candidate string) (string, bool) {
+	mediaType := strings.ToLower(strings.TrimSpace(candidate))
+
+	_, ok := mediaTypes[mediaType]
+
+	return mediaType, ok
 }

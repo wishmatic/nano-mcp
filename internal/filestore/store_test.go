@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,8 @@ import (
 )
 
 const testPublicHost = "https://cdn.example.com"
+
+var testPNG = []byte("\x89PNG\r\n\x1a\n and more")
 
 func TestNewRejectsAnIncompleteConfig(t *testing.T) {
 	base, err := url.Parse(testPublicHost)
@@ -75,6 +78,28 @@ func TestPutWritesTheAssetAndReturnsItsLink(t *testing.T) {
 	}
 }
 
+func TestPutStoresAnImage(t *testing.T) {
+	client, dir := testClient(t)
+
+	asset, err := client.Put(context.Background(), testPNG, "image/png")
+	if err != nil {
+		t.Fatalf("Put() error: %v", err)
+	}
+
+	if !strings.HasSuffix(asset.URL, ".png") || asset.MediaType != "image/png" {
+		t.Errorf("asset = %+v, want a png under the public host", asset)
+	}
+
+	stored, err := os.ReadFile(pathOf(t, dir, asset.URL))
+	if err != nil {
+		t.Fatalf("read stored asset: %v", err)
+	}
+
+	if !bytes.Equal(stored, testPNG) {
+		t.Errorf("stored = %q, want the uploaded bytes", stored)
+	}
+}
+
 func TestPutNamesEachAssetApart(t *testing.T) {
 	client, _ := testClient(t)
 
@@ -117,13 +142,17 @@ func TestFetchCopiesTheAsset(t *testing.T) {
 
 	source := serve(t, "video/mp4", "fetched bytes")
 
-	asset, err := client.Fetch(context.Background(), source)
+	asset, data, err := client.Fetch(context.Background(), source)
 	if err != nil {
 		t.Fatalf("Fetch() error: %v", err)
 	}
 
 	if !strings.HasSuffix(asset.URL, ".mp4") || asset.MediaType != "video/mp4" {
 		t.Errorf("asset = %+v, want the source's media type", asset)
+	}
+
+	if string(data) != "fetched bytes" {
+		t.Errorf("bytes = %q, want the fetched bytes returned as well as stored", data)
 	}
 
 	stored, err := os.ReadFile(pathOf(t, dir, asset.URL))
@@ -136,12 +165,31 @@ func TestFetchCopiesTheAsset(t *testing.T) {
 	}
 }
 
+func TestFetchSniffsAnUnlabelledImage(t *testing.T) {
+	client, _ := testClient(t)
+
+	source := serveBytes(t, "application/octet-stream", testPNG)
+
+	asset, data, err := client.Fetch(context.Background(), source)
+	if err != nil {
+		t.Fatalf("Fetch() error: %v", err)
+	}
+
+	if asset.MediaType != "image/png" || !strings.HasSuffix(asset.URL, ".png") {
+		t.Errorf("asset = %+v, want the image type the bytes carry", asset)
+	}
+
+	if !bytes.Equal(data, testPNG) {
+		t.Errorf("bytes = %q, want the fetched bytes", data)
+	}
+}
+
 func TestFetchUsesTheDefaultTypeWhenTheSourceHasNone(t *testing.T) {
 	client, _ := testClient(t)
 
 	source := serve(t, "application/octet-stream", "bytes")
 
-	asset, err := client.Fetch(context.Background(), source)
+	asset, _, err := client.Fetch(context.Background(), source)
 	if err != nil {
 		t.Fatalf("Fetch() error: %v", err)
 	}
@@ -159,7 +207,7 @@ func TestFetchReportsAFailedDownload(t *testing.T) {
 	}))
 	t.Cleanup(source.Close)
 
-	_, err := client.Fetch(context.Background(), source.URL)
+	_, _, err := client.Fetch(context.Background(), source.URL)
 	if err == nil || !strings.Contains(err.Error(), "404") {
 		t.Errorf("Fetch() error = %v, want the upstream status surfaced", err)
 	}
@@ -169,7 +217,7 @@ func TestFetchRejectsASourceItCannotGet(t *testing.T) {
 	client, _ := testClient(t)
 
 	for _, source := range []string{"file:///etc/passwd", "not a url at all"} {
-		if _, err := client.Fetch(context.Background(), source); err == nil {
+		if _, _, err := client.Fetch(context.Background(), source); err == nil {
 			t.Errorf("Fetch(%q) error = nil, want a rejection", source)
 		}
 	}
@@ -181,7 +229,7 @@ func TestFetchRejectsAnAssetOverTheCap(t *testing.T) {
 
 	source := serve(t, "video/mp4", "nine byte")
 
-	_, err := client.Fetch(context.Background(), source)
+	_, _, err := client.Fetch(context.Background(), source)
 	if err == nil || !strings.Contains(err.Error(), "cap") {
 		t.Errorf("Fetch() error = %v, want the cap named", err)
 	}
@@ -190,9 +238,15 @@ func TestFetchRejectsAnAssetOverTheCap(t *testing.T) {
 func serve(t *testing.T, contentType, body string) string {
 	t.Helper()
 
+	return serveBytes(t, contentType, []byte(body))
+}
+
+func serveBytes(t *testing.T, contentType string, body []byte) string {
+	t.Helper()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", contentType)
-		_, _ = w.Write([]byte(body))
+		_, _ = w.Write(body)
 	}))
 	t.Cleanup(srv.Close)
 

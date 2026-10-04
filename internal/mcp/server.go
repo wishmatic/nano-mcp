@@ -47,9 +47,10 @@ func registerTools(srv *mcp.Server, h *handlers) {
 	registerFirecrawlCrawl(srv, h)
 	registerYouTubeTranscribe(srv, h)
 
-	// generate_video is the one tool that needs somewhere to put what it makes, and something
-	// that can turn the address it is handed into the bytes it uploads.
+	// generate_video and generate_image are the tools that need somewhere to put what they make,
+	// and something that can turn the address they are handed into the bytes they upload.
 	if h.files != nil && h.resolver != nil {
 		registerGenerateVideo(srv, h)
+		registerGenerateImage(srv, h)
 	}
 }

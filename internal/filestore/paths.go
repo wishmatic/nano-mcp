@@ -37,7 +37,7 @@ func (c *Client) safePath(key string) (string, error) {
 	return full, nil
 }
 
-// writeFileAtomic keeps a reader from seeing a half-written video, and keeps a failed download
+// writeFileAtomic keeps a reader from seeing a half-written asset, and keeps a failed download
 // from leaving a truncated file behind.
 func writeFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)

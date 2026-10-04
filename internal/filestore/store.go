@@ -1,6 +1,7 @@
-// Package filestore keeps the media nano-gpt generates on disk and serves it over HTTP. MCP
-// has no video content block, so a generated video reaches the caller as a URL to one of these
-// files rather than as tool content.
+// Package filestore keeps the media nano-gpt generates on disk and serves it over HTTP. A
+// generated video reaches the caller as a URL to one of these files rather than as tool content,
+// because MCP has no video content block; a generated image is stored the same way, and is
+// attached to the result as well.
 package filestore
 
 import (
@@ -99,37 +100,43 @@ func (c *Client) Put(ctx context.Context, data []byte, mediaType string) (Asset,
 
 // Fetch copies an upstream asset to disk. nano-gpt hands back a provider URL that expires, and
 // some providers require headers a plain reader will not send, so a caller gets a link of our
-// own instead.
-func (c *Client) Fetch(ctx context.Context, source string) (Asset, error) {
+// own instead. The bytes come back too, because a caller presenting the asset inline needs them
+// and re-reading the file would be absurd.
+func (c *Client) Fetch(ctx context.Context, source string) (Asset, []byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, MaxFetchDuration)
 	defer cancel()
 
 	if err := checkSource(source); err != nil {
-		return Asset{}, err
+		return Asset{}, nil, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
 	if err != nil {
-		return Asset{}, fmt.Errorf("filestore: build request for %s: %w", source, err)
+		return Asset{}, nil, fmt.Errorf("filestore: build request for %s: %w", source, err)
 	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return Asset{}, fmt.Errorf("filestore: download %s: %w", source, err)
+		return Asset{}, nil, fmt.Errorf("filestore: download %s: %w", source, err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return Asset{}, fmt.Errorf("filestore: download %s: %s", source, resp.Status)
+		return Asset{}, nil, fmt.Errorf("filestore: download %s: %s", source, resp.Status)
 	}
 
 	data, err := c.readCapped(resp.Body)
 	if err != nil {
-		return Asset{}, fmt.Errorf("filestore: download %s: %w", source, err)
+		return Asset{}, nil, fmt.Errorf("filestore: download %s: %w", source, err)
 	}
 
-	return c.Put(ctx, data, mediaTypeOf(resp.Header.Get("Content-Type")))
+	asset, err := c.Put(ctx, data, mediaTypeOf(resp.Header.Get("Content-Type"), data))
+	if err != nil {
+		return Asset{}, nil, err
+	}
+
+	return asset, data, nil
 }
 
 func checkSource(source string) error {

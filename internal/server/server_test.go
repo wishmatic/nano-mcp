@@ -114,6 +114,10 @@ func TestWriteTimeoutOutlivesTheUpstreamCall(t *testing.T) {
 	if longest := nanogpt.VideoWaitBudget + filestore.MaxFetchDuration; writeTimeout <= longest {
 		t.Errorf("writeTimeout = %s, want it above a video call's %s", writeTimeout, longest)
 	}
+
+	if image := nanogpt.ImageGenerationBudget + filestore.MaxFetchDuration; writeTimeout <= image {
+		t.Errorf("writeTimeout = %s, want it above an image call's %s", writeTimeout, image)
+	}
 }
 
 func TestHealthz(t *testing.T) {

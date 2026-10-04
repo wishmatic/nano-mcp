@@ -80,7 +80,7 @@ func (h *handlers) generateVideo(ctx context.Context, _ *mcp.CallToolRequest, in
 		return nil, generateVideoOutput{}, h.fail("generate_video", err)
 	}
 
-	stored, err := h.files.Fetch(ctx, video.URL)
+	stored, _, err := h.files.Fetch(ctx, video.URL)
 	if err != nil {
 		return nil, generateVideoOutput{}, h.fail("generate_video", err)
 	}

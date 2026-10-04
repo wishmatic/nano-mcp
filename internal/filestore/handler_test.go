@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -62,6 +63,61 @@ func TestServeAnswersHead(t *testing.T) {
 	}
 }
 
+func TestServeReturnsAnImage(t *testing.T) {
+	client, _ := testClient(t)
+
+	asset, err := client.Put(context.Background(), testPNG, "image/png")
+	if err != nil {
+		t.Fatalf("Put() error: %v", err)
+	}
+
+	rec := get(t, client, http.MethodGet, asset.URL)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	if !bytes.Equal(rec.Body.Bytes(), testPNG) {
+		t.Errorf("body = %q, want the stored bytes", rec.Body.Bytes())
+	}
+
+	if got := rec.Header().Get("Content-Type"); got != "image/png" {
+		t.Errorf("Content-Type = %q, want image/png", got)
+	}
+}
+
+func TestDetectMediaTypeNamesWhatItServes(t *testing.T) {
+	tests := map[string]struct {
+		data []byte
+		want string
+	}{
+		"png":     {data: testPNG, want: "image/png"},
+		"jpeg":    {data: []byte("\xff\xd8\xff and more"), want: "image/jpeg"},
+		"webp":    {data: []byte("RIFF\x00\x00\x00\x00WEBPVP8 and more"), want: "image/webp"},
+		"mp4":     {data: []byte("\x00\x00\x00\x14ftypmp42\x00\x00\x00\x00mp42"), want: "video/mp4"},
+		"webm":    {data: []byte("\x1a\x45\xdf\xa3 and more"), want: "video/webm"},
+		"not one": {data: []byte("plain text, most likely")},
+		"empty":   {data: nil},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, ok := DetectMediaType(tt.data)
+			if tt.want == "" {
+				if ok {
+					t.Errorf("DetectMediaType() = %q, true, want it refused", got)
+				}
+
+				return
+			}
+
+			if !ok || got != tt.want {
+				t.Errorf("DetectMediaType() = %q, %v, want %q", got, ok, tt.want)
+			}
+		})
+	}
+}
+
 func TestServeHidesWhatItCannotServe(t *testing.T) {
 	client, _ := testClient(t)
 
@@ -71,7 +127,7 @@ func TestServeHidesWhatItCannotServe(t *testing.T) {
 	}
 
 	paths := map[string]string{
-		"an extension with no media type": swapExtension(t, asset.URL, ".png"),
+		"an extension with no media type": swapExtension(t, asset.URL, ".pdf"),
 		"a key that was never stored":     swapExtension(t, asset.URL, ".mp4x"),
 		"a path outside the namespace":    "/secret.mp4",
 		"a traversing key":                "/v/../secret.mp4",

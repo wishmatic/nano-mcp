@@ -23,8 +23,8 @@ type Config struct {
 	// comma-separated public=private pairs.
 	ImageURLMap string `env:"IMAGE_URL_MAP"`
 
-	// PublicHost is where generated videos are served from, which is a host of its own when
-	// the server sits behind a proxy or a tunnel.
+	// PublicHost is where generated media is served from, which is a host of its own when the
+	// server sits behind a proxy or a tunnel.
 	PublicHost string `env:"PUBLIC_HOST"`
 	FilesDir   string `env:"FILES_DIR" envDefault:"files"`
 }
@@ -44,7 +44,7 @@ func (c Config) Addr() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
-// PublicBase normalises PUBLIC_HOST into the base URL every stored video is served from. It is
+// PublicBase normalises PUBLIC_HOST into the base URL every stored asset is served from. It is
 // nil when PUBLIC_HOST is unset, and a trailing slash is accepted; any other path is rejected
 // because the file routes are mounted at the root.
 func (c Config) PublicBase() (*url.URL, error) {

@@ -23,7 +23,8 @@ import (
 
 // writeTimeout clears the longest call the client will make, so that call fails with the
 // upstream error rather than a connection the server aborts mid-response. The longest is
-// generate_video: waiting out a generation, then copying the result to disk.
+// generate_video: waiting out a generation, then copying the result to disk. generate_image is a
+// synchronous generation plus the same copy, which is shorter; the test holds both to this.
 const writeTimeout = nanogpt.VideoWaitBudget + filestore.MaxFetchDuration + time.Minute
 
 type Server struct {
@@ -59,7 +60,7 @@ func newServer(cfg config.Config, log *zap.Logger, nano *nanogpt.Client) (*Serve
 	}
 
 	if publicBase == nil {
-		return nil, fmt.Errorf("PUBLIC_HOST is required, so that videos have a URL")
+		return nil, fmt.Errorf("PUBLIC_HOST is required, so that generated media has a URL")
 	}
 
 	files, err := filestore.New(filestore.Config{Dir: cfg.FilesDir, PublicBase: publicBase}, log)
@@ -102,11 +103,11 @@ func newServer(cfg config.Config, log *zap.Logger, nano *nanogpt.Client) (*Serve
 
 	files.Register(router)
 
-	log.Info("video hosting enabled",
+	log.Info("media hosting enabled",
 		zap.String("dir", cfg.FilesDir),
 		zap.String("public_host", cfg.PublicHost),
 	)
-	log.Warn("stored videos are readable by anyone with the URL")
+	log.Warn("stored videos and images are readable by anyone with the URL")
 
 	router.Mount("/mcp", auth.Middleware(log, cfg.APIKey)(handler))
 

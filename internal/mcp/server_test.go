@@ -54,7 +54,7 @@ func TestServerListsTheTools(t *testing.T) {
 	session := nanoSession(t, "http://127.0.0.1:1")
 
 	want := []string{
-		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "generate_video",
+		"firecrawl_crawl", "firecrawl_map", "firecrawl_scrape", "generate_image", "generate_video",
 		"web_scrape", "web_search", "youtube_transcribe",
 	}
 	names := toolNames(t, session)
